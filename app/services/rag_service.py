@@ -121,15 +121,23 @@ class RagService:
 
 		# Construction matrice de similarite
 		if self._use_semantic and self._encoder is not None:
-			print(f"[RAG] Calcul des embeddings semantiques pour {len(texts)} documents...")
-			embeddings = self._encoder.encode(
-				texts,
-				show_progress_bar=True,
-				batch_size=64,
-				convert_to_numpy=True,
-			)
-			self._matrix = embeddings
-			print(f"[RAG] Embeddings calcules : shape={self._matrix.shape}")
+			# Cache des embeddings sur disque pour eviter le recalcul a chaque demarrage
+			cache_path = dataset_path.parent / f".embeddings_cache_{len(texts)}_{len(existing_cols)}.npy"
+			if cache_path.exists():
+				print(f"[RAG] Chargement des embeddings depuis le cache disque...")
+				self._matrix = np.load(str(cache_path))
+				print(f"[RAG] Embeddings charges depuis cache : shape={self._matrix.shape}")
+			else:
+				print(f"[RAG] Calcul des embeddings semantiques pour {len(texts)} documents (1ere fois)...")
+				embeddings = self._encoder.encode(
+					texts,
+					show_progress_bar=True,
+					batch_size=64,
+					convert_to_numpy=True,
+				)
+				self._matrix = embeddings
+				np.save(str(cache_path), embeddings)
+				print(f"[RAG] Embeddings calcules et sauvegardes dans {cache_path.name} : shape={self._matrix.shape}")
 		else:
 			from sklearn.feature_extraction.text import TfidfVectorizer
 			vectorizer = TfidfVectorizer(

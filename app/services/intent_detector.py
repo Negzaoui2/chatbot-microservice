@@ -3,6 +3,7 @@ from __future__ import annotations
 
 # Intents supportés :
 #   export          → Demande d'export fichier PDF/Excel (Export)
+#   prediction      → Prédiction ML d'attrition (Machine Learning)
 #   question        → Question RH générale (RAG + LLM)
 #   report          → Demande de rapport / statistiques (Analytics)
 #   suggestion      → Qui est disponible ? Affecter quelqu'un (Planning)
@@ -17,6 +18,14 @@ class IntentDetector:
 		"pdf", "excel", "xlsx", "télécharger", "telecharger",
 		"exporter", "export", "fichier", "download",
 		"générer un rapport", "generer un rapport",
+	]
+
+	PREDICTION_KEYWORDS = [
+		"prédiction", "prediction", "prédire", "predire",
+		"risque", "à risque", "a risque", "vont partir",
+		"susceptible", "probabilité", "machine learning",
+		"qui va quitter", "qui risque", "modèle",
+		"anticiper", "prévoir", "prevoir",
 	]
 
 	REPORT_KEYWORDS = [
@@ -60,6 +69,9 @@ class IntentDetector:
 		# Export PDF/Excel détecté en priorité
 		if any(k in text for k in self.EXPORT_KEYWORDS):
 			return "export"
+		# Prédiction ML
+		if any(k in text for k in self.PREDICTION_KEYWORDS):
+			return "prediction"
 		if any(k in text for k in self.REPORT_KEYWORDS):
 			return "report"
 		# Suggestion : mots simples OU combinaisons composées

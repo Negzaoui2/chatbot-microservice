@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 	# Dataset / RAG
 	dataset_path: Path | None = Field(
 		default=None,
-		description="Path to a local CSV file (e.g., Kaggle HR dataset exported as CSV).",
+		description="Path to a local CSV file (e.g.,  HR dataset exported as CSV).",
 	)
 	dataset_text_columns: str = Field(
 		default="",

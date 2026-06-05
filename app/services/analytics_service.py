@@ -98,7 +98,7 @@ class AnalyticsService:
 		for dept, n in counts.items():
 			lines.append(f"- {dept} ({n} employés)")
 		lines.append(f"\n**Total : {counts.sum()} employés**")
-		return "\n".join(lines)
+		return "\n".join(lines) 
 
 	def seniority_distribution(self) -> str:
 		"""Répartition des niveaux de séniorité par département."""

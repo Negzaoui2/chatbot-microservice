@@ -11,6 +11,7 @@ from app.services.export_service import ExportService
 from app.services.intent_detector import IntentDetector
 from app.services.llm_service import LlmService
 from app.services.planning_service import PlanningService
+from app.services.prediction_service import PredictionService
 from app.services.rag_service import RagService
 from app.utils.prompts import build_system_prompt, build_user_prompt
 
@@ -60,6 +61,7 @@ intent_detector = IntentDetector()
 analytics_service = AnalyticsService()
 export_service = ExportService()
 planning_service = PlanningService()
+prediction_service = PredictionService()
 llm_service = LlmService(
 	api_key=settings.groq_api_key,
 	model=settings.groq_model,
@@ -80,6 +82,7 @@ def _startup() -> None:
 	print(f"[STARTUP] RAG ready: {rag_service.is_ready}")
 	print(f"[STARTUP] Analytics ready: {analytics_service.is_ready}")
 	print(f"[STARTUP] Planning ready: {planning_service.is_ready}")
+	print(f"[STARTUP] Prediction ML ready: {prediction_service.is_ready}")
 	print(f"[STARTUP] LLM enabled: {llm_service.enabled}")
 
 
@@ -98,6 +101,8 @@ def chat(payload: ChatRequest) -> ChatResponse:
 
 	if intent == "export":
 		response = _handle_export(payload.message)
+	elif intent == "prediction":
+		response = _handle_prediction(payload.message, history)
 	elif intent == "report":
 		response = _handle_report(payload.message, intent, history)
 	elif intent in ("suggestion", "optimization"):
@@ -109,6 +114,39 @@ def chat(payload: ChatRequest) -> ChatResponse:
 	_save_to_history(payload.session_id, payload.message, response.answer)
 	response.session_id = payload.session_id
 	return response
+
+
+def _handle_prediction(message: str, history: list[HistoryMessage]) -> ChatResponse:
+	"""Utilise le modèle ML pour prédire les employés à risque d'attrition."""
+	text = message.lower()
+
+	# Détecter si l'utilisateur demande les infos du modèle
+	if any(k in text for k in ["info modèle", "info model", "performance", "accuracy", "précision"]):
+		raw_data = prediction_service.get_model_info()
+	else:
+		# Détecter un éventuel département mentionné
+		department = None
+		departments_known = [
+			"dsi", "backend", "web", "mobile", "data science", "devops",
+			"cloud", "sap", "erp", "qa", "test", "rh", "pmo", "prodops",
+			"bi", "business intelligence", "exploitation",
+		]
+		for dept in departments_known:
+			if dept in text:
+				department = dept
+				break
+
+		raw_data = prediction_service.predict_at_risk(top_n=10, department=department)
+
+	# Enrichir via LLM si disponible
+	if llm_service.enabled:
+		system_prompt = build_system_prompt("prediction")
+		user_prompt = build_user_prompt(message, raw_data, "prediction", history)
+		result = llm_service.generate(system_prompt=system_prompt, user_prompt=user_prompt)
+		if result.text:
+			return ChatResponse(answer=result.text, intent="prediction", used_llm=True)
+
+	return ChatResponse(answer=raw_data, intent="prediction", used_llm=False)
 
 
 def _handle_export(message: str) -> ChatResponse:
